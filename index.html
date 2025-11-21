@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบกิจกรรมนาฏศิลป์ Interactive</title>
+    <!-- โหลด Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลด html2canvas สำหรับการบันทึกภาพ --><script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* กำหนดฟอนต์หลัก */
+        body {
+            font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        /* ซ่อนหน้าอื่นๆ */
+        .page {
+            display: none;
+        }
+        /* Custom scrollbar for aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #aaa;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center p-4">
+
+    <!-- องค์ประกอบหลักของ Web App --><main id="app-container" class="w-full max-w-4xl bg-white shadow-xl rounded-xl p-6 md:p-10 mb-20">
+
+        <!-- Header และ Step Indicator --><header class="mb-8">
+            <h1 id="app-title" class="text-3xl font-extrabold text-gray-800 mb-1"></h1>
+            <p id="app-subtitle" class="text-lg text-gray-600 border-b pb-4 mb-6"></p>
+            <!-- Step Indicator --><div id="step-indicator" class="flex justify-between items-center text-center">
+                <!-- เนื้อหาจะถูกสร้างด้วย JS ที่นี่ --></div>
+        </header>
+
+        <!-- Page 1: ข้อมูลนักเรียน (เริ่มต้น) --><div id="page-1" class="page">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Step 1: ข้อมูลนักเรียน</h2>
+            <form id="student-form" class="space-y-6">
+                <div>
+                    <label for="student-name" class="block text-base font-medium text-gray-700">ชื่อ-นามสกุล</label>
+                    <input type="text" id="student-name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="student-class" class="block text-base font-medium text-gray-700">ชั้น (เช่น ม.2/1)</label>
+                        <input type="text" id="student-class" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div class="w-1/2">
+                        <label for="student-number" class="block text-base font-medium text-gray-700">เลขที่</label>
+                        <input type="number" id="student-number" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-3 rounded-md text-white font-bold transition duration-150 shadow-md hover:shadow-lg" id="next-to-page-2-btn"></button>
+            </form>
+        </div>
+
+        <!-- Page 2: ทำใบงาน --><div id="page-2" class="page">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Step 2: ตอบคำถาม</h2>
+            <form id="worksheet-form" class="space-y-6">
+                <!-- คำถามจะถูกสร้างด้วย JS ที่นี่ -->
+            </form>
+            <div class="mt-10">
+                <button onclick="validateAndScore()" class="w-full py-3 rounded-md text-white font-bold transition duration-150 shadow-md hover:shadow-lg" id="submit-worksheet-btn"></button>
+            </div>
+        </div>
+
+        <!-- Page 3: สรุปผล --><div id="page-3" class="page">
+            
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Step 3: สรุปผลการเรียนรู้</h2>
+            
+            <!-- Dashboard Container สำหรับ Capture --><div id="dashboard-capture-area" class="bg-gray-50 p-6 md:p-8 rounded-lg shadow-inner space-y-6">
+                
+                <h3 class="text-xl font-bold text-gray-800 border-b pb-3 mb-4" id="dashboard-title"></h3>
+
+                <!-- 1. ข้อมูลนักเรียน และ 2. สรุปสถานะ --><div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- การ์ด ข้อมูลนักเรียน --><div id="student-info-card" class="md:col-span-2 p-4 rounded-lg shadow-md border-l-4 border-emerald-600 bg-white">
+                        <p class="text-sm font-medium text-gray-500">ข้อมูลนักเรียน</p>
+                        <p class="text-lg font-semibold text-gray-800" id="info-name"></p>
+                        <p class="text-base text-gray-600" id="info-class"></p>
+                    </div>
+
+                    <!-- การ์ด สรุปสถานะ --><div id="score-card" class="md:col-span-1 p-4 rounded-lg shadow-lg text-white text-center flex flex-col justify-center items-center">
+                        <p class="text-sm font-medium opacity-90">สถานะ</p>
+                        <p id="total-score-display" class="text-xl font-extrabold">เสร็จสมบูรณ์</p>
+                        <p id="total-points-display" class="text-sm opacity-90">ดาวน์โหลดไฟล์สรุปผล (PNG) เพื่อส่งงานใน Google Classroom</p>
+                    </div>
+                </div>
+
+                <!-- 3. รายละเอียดผลลัพธ์ --><div id="results-details" class="space-y-6">
+                    <!-- ส่วนผลลัพธ์จะถูกสร้างด้วย JS ที่นี่ --></div>
+            </div>
+
+            <!-- ปุ่มดาวน์โหลดและรีเซ็ต --><div class="mt-8 pt-6 border-t flex flex-col md:flex-row gap-4">
+                <button onclick="downloadSummary()" class="flex-1 py-3 px-4 rounded-md text-white font-bold transition duration-150 shadow-md hover:shadow-lg flex items-center justify-center space-x-2" id="download-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    <span>ดาวน์โหลดใบสรุปผล (.png)</span>
+                </button>
+                <button onclick="resetApp()" class="flex-1 py-3 px-4 rounded-md bg-red-600 text-white font-bold transition duration-150 shadow-md hover:bg-red-700 hover:shadow-lg flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    <span>เริ่มใหม่ทั้งหมด</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer --><footer class="mt-4 text-center text-sm text-gray-500 w-full max-w-4xl pb-4">
+        พัฒนาระบบโดย: นายสุนทร ฉอมไธสง
+    </footer>
+
+    <script>
+        // --- 1. Static Data and Configuration ---
+        const primaryColorClass = 'emerald'; // ใช้สำหรับ Tailwind (เช่น bg-emerald-600, text-emerald-600)
+        const backgroundColors = ['bg-white', `bg-gray-100`]; // สีพื้นหลังสลับ: ขาวและเทาอ่อน
+        const appConfig = {
+            app_title: "ใบกิจกรรม เรื่อง ความสัมพันธ์ของงานนาฏศิลป์",
+            app_subtitle: "ตัวชี้วัด: ศ 3.1 ม. 2/1, ม. 2/5", 
+            theme_color_class: primaryColorClass,
+        };
+
+        // โครงสร้างคำถาม: ใช้ตัวเลขอารบิกที่ชัดเจน (1, 2, 3)
+        const worksheetStructure = [
+            {
+                id: 'p_select',
+                title: 'การแสดงที่เลือกวิเคราะห์',
+                description: 'ให้นักเรียนเลือกการแสดงนาฏศิลป์ 1 การแสดง', 
+                questions: [
+                    { q_id: 'q_name', text: 'การแสดง', rows: 1 }
+                ]
+            },
+            {
+                id: 'part1',
+                title: '1. ความสัมพันธ์กับวิชาเรียน',
+                description: 'วิเคราะห์ความสัมพันธ์ของงานนาฏศิลป์ที่เลือกกับการเรียนในวิชาอื่น ๆ (เช่น ประวัติศาสตร์, สังคม, ภาษาไทย)',
+                questions: [
+                    { q_id: 'q1_analysis', text: 'ตอบ', rows: 3 } 
+                ]
+            },
+            {
+                id: 'part2',
+                title: '2. ความสัมพันธ์กับประเพณี วัฒนธรรม',
+                description: 'วิเคราะห์ว่าการแสดงที่เลือกเกี่ยวข้องหรือสะท้อนประเพณี พิธีกรรม หรือวิถีชีวิตทางวัฒนธรรมอย่างไร',
+                questions: [
+                    { q_id: 'q2_analysis', text: 'ตอบ', rows: 3 }
+                ]
+            },
+            {
+                id: 'part3',
+                title: '3. ความสัมพันธ์ระหว่างศิลปะแขนงอื่น ๆ',
+                description: 'วิเคราะห์การนำองค์ประกอบจากศิลปะแขนงอื่น (เช่น ดนตรี, วรรณกรรม, จิตรกรรม, ประติมากรรม) มาใช้ในการแสดง',
+                questions: [
+                    { q_id: 'q3_analysis', text: 'ตอบ', rows: 3 }
+                ]
+            }
+        ];
+
+        // --- 2. Global Variables and Initial Setup ---
+        let currentStep = 1;
+        let userAnswers = {};
+        const totalScorePlaceholder = "เสร็จสมบูรณ์"; 
+        
+        // --- 3. Utility Functions ---
+
+        /**
+         * @description สร้างโค้ดสี Tailwind แบบ Dynamic
+         * @param {string} type 'bg', 'text', 'border', 'hover'
+         * @param {number} weight ความเข้มสี (e.g., 500, 600)
+         */
+        const getThemeClass = (type, weight) => {
+            return `${type}-${appConfig.theme_color_class}-${weight}`;
+        };
+
+        /**
+         * @description บันทึกข้อมูลไปยัง sessionStorage
+         * @param {string} key
+         * @param {any} value
+         */
+        const saveData = (key, value) => {
+            sessionStorage.setItem(key, JSON.stringify(value));
+        };
+
+        /**
+         * @description ดึงข้อมูลจาก sessionStorage
+         * @param {string} key
+         */
+        const loadData = (key) => {
+            const data = sessionStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        };
+
+        /**
+         * @description แสดงข้อความแจ้งเตือน (แทน alert/confirm)
+         * @param {string} message ข้อความที่ต้องการแสดง
+         */
+        const showMessage = (message) => {
+             const container = document.getElementById('app-container');
+             const existingModal = document.getElementById('custom-modal');
+             if (existingModal) existingModal.remove();
+
+             const modalHtml = `
+                <div id="custom-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                    <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 duration-300">
+                        <p class="text-lg font-medium text-gray-800 mb-4">${message}</p>
+                        <button onclick="document.getElementById('custom-modal').remove()" class="w-full py-2 ${getThemeClass('bg', 600)} text-white rounded-md font-semibold hover:${getThemeClass('bg', 700)}">
+                            รับทราบ
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('afterend', modalHtml);
+        };
+        
+        /**
+         * @description แสดง Pop-up ยืนยันการส่งงาน พร้อมคำแนะนำในการดาวน์โหลด
+         */
+        const showCompletionModal = () => {
+            const container = document.getElementById('app-container');
+            // แก้ไข: ตรวจสอบ ID ของ modal ที่กำลังจะสร้าง
+            const existingModal = document.getElementById('completion-modal'); 
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div id="completion-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]">
+                    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full transform transition-all scale-100 duration-300 text-center">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h3 class="text-2xl font-extrabold text-${appConfig.theme_color_class}-600 mb-2">🎉 เสร็จสมบูรณ์แล้ว! 🎉</h3>
+                        <p class="text-gray-700 mb-6">คุณได้กรอกข้อมูลในใบกิจกรรมครบถ้วนแล้ว</p>
+                        
+                        <div class="p-4 bg-gray-100 rounded-lg text-left mb-6 space-y-2">
+                            <p class="font-bold text-gray-800">ขั้นตอนถัดไป:</p>
+                            <ol class="list-decimal list-inside text-gray-600 space-y-1">
+                                <li>กดปุ่ม **"ดาวน์โหลดใบสรุปผล (.png)"** ในหน้าสรุปผล</li>
+                                <li>นำไฟล์ภาพที่ดาวน์โหลดได้ไป **ส่งงานใน Google Classroom**</li>
+                            </ol>
+                        </div>
+
+                        <button onclick="document.getElementById('completion-modal').remove(); renderDashboard(); navigateTo(3);" class="w-full py-3 ${getThemeClass('bg', 600)} text-white rounded-md font-bold hover:${getThemeClass('bg', 700)} shadow-lg">
+                            ไปหน้าสรุปผล
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('afterend', modalHtml);
+        };
+
+
+        // --- 4. UI Rendering Functions ---
+
+        /**
+         * @description อัปเดต Step Indicator
+         */
+        const updateStepIndicator = () => {
+            const indicator = document.getElementById('step-indicator');
+            const stepInfo = [
+                { step: 1, label: 'ข้อมูล' },
+                { step: 2, label: 'ใบงาน' },
+                { step: 3, label: 'สรุปผล' }
+            ];
+
+            let html = `
+                <div class="flex w-full justify-between items-start relative pb-2">
+                    <!-- Base Line: Use fixed padding/margin to keep line within boundaries -->
+                    <div class="absolute top-[20px] left-[18%] right-[18%] h-0.5 bg-gray-300"></div>
+                    <!-- Progress Line -->
+                    <div class="absolute top-[20px] left-[18%] h-0.5 ${getThemeClass('bg', 600)} transition-all duration-500"
+                         style="width: ${ (currentStep - 1) * 32.5}%;"></div> 
+                    
+                    ${stepInfo.map(s => {
+                        const isActive = s.step === currentStep;
+                        const isDone = s.step < currentStep;
+                        
+                        let bgColor = isDone ? getThemeClass('bg', 600) : (isActive ? getThemeClass('bg', 500) : 'bg-gray-300');
+                        let textColor = isDone || isActive ? 'text-white' : 'text-gray-500';
+                        
+                        // Use flex-1 for center items, and explicit margin for outer items to control spacing
+                        return `
+                            <div class="flex flex-col items-center z-10 ${s.step === 2 ? 'flex-1' : ''} ${s.step === 1 ? 'ml-0' : ''} ${s.step === 3 ? 'mr-0' : ''}">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${bgColor} ${textColor} transition-colors duration-300 shadow-md">
+                                    ${s.step}
+                                </div>
+                                <span class="text-xs mt-2 font-medium text-gray-700">${s.label}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            indicator.innerHTML = html;
+        };
+
+        /**
+         * @description แสดงหน้าตาม Step ที่กำหนด
+         * @param {number} step
+         */
+        const navigateTo = (step) => {
+            currentStep = step;
+            document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
+            document.getElementById(`page-${step}`).style.display = 'block';
+            updateStepIndicator();
+        };
+
+        /**
+         * @description สร้าง HTML สำหรับคำถามแบบพิมพ์ตอบ (Text Input) สั้น/ยาว
+         * @param {object} qData
+         * @param {string} partId
+         * @param {string} inputType 'text_input_short', 'text_input_long'
+         */
+        const createTextInput = (qData, partId, inputType) => {
+            const inputId = `${partId}-${qData.q_id}`;
+            const existingAnswer = userAnswers[inputId] || '';
+            const isShort = inputType === 'text_input_short';
+
+            return `
+                <div class="space-y-2">
+                    <label for="${inputId}" class="block text-base font-medium text-gray-700">${qData.text}</label>
+                    <textarea id="${inputId}" name="${inputId}" rows="${qData.rows}" required 
+                              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-${appConfig.theme_color_class}-500 focus:border-${appConfig.theme_color_class}-500 text-gray-700 resize-none ${isShort ? 'h-10' : ''}">${existingAnswer}</textarea>
+                </div>
+            `;
+        };
+
+        /**
+         * @description สร้างฟอร์มใบงานทั้งหมดในรูปแบบ List/Stacked
+         */
+        const renderWorksheet = () => {
+            const formContainer = document.getElementById('worksheet-form');
+            let html = '';
+            
+            // --- 1. Central Topic (การแสดง) - Index 0 (อยู่ตรงกลาง) ---
+            const centralPart = worksheetStructure[0];
+            const centralQ = centralPart.questions[0];
+            
+            html += `
+                <!-- Central Node (การแสดงที่เลือกวิเคราะห์) -->
+                <div class="flex justify-center mb-10">
+                    <div class="w-full p-6 rounded-lg shadow-lg ${getThemeClass('bg', 50)} border-b-4 ${getThemeClass('border', 600)} text-center mx-auto max-w-lg">
+                        <h3 class="text-2xl font-extrabold text-${appConfig.theme_color_class}-800 mb-4">${centralPart.title}</h3>
+                        <!-- ปรับขนาดตัวอักษรของคำอธิบายโจทย์ตรงกลางให้ใหญ่ขึ้น -->
+                        <p class="text-lg text-gray-600 mb-6">${centralPart.description}</p> 
+                        <!-- Input for the performance name -->
+                        <div class="flex justify-center"> 
+                           <div class="w-full max-w-md">
+                                <textarea id="${centralPart.id}-${centralQ.q_id}" name="${centralPart.id}-${centralQ.q_id}" rows="${centralQ.rows}" required 
+                                          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-${appConfig.theme_color_class}-500 focus:border-${appConfig.theme_color_class}-500 text-gray-700 resize-none h-10 text-center">${userAnswers[`${centralPart.id}-${centralQ.q_id}`] || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // --- 2. Stacked Questions (Part 1, 2, 3) ---
+            worksheetStructure.slice(1).forEach((part, index) => {
+                const fullIndex = index + 1; // Index 1, 2, 3
+                const bgColor = backgroundColors[fullIndex % backgroundColors.length];
+                
+                html += `
+                    <!-- Question Block ${part.title} -->
+                    <div class="p-6 rounded-xl shadow-md ${bgColor} border-l-4 ${getThemeClass('border', 500)} mb-6">
+                        <h3 class="text-xl font-bold mb-3 text-${appConfig.theme_color_class}-700">${part.title}</h3>
+                        
+                        <!-- คำอธิบายโจทย์ -->
+                        <p class="text-base text-gray-600 mb-4">${part.description}</p>
+
+                        <!-- ช่องคำตอบแนวยาว (rows=3) -->
+                        ${part.questions.map(q => {
+                            const inputId = `${part.id}-${q.q_id}`;
+                            const existingAnswer = userAnswers[inputId] || '';
+
+                            return `
+                                <div class="space-y-2">
+                                    <label for="${inputId}" class="block text-base font-medium text-gray-800">${q.text}</label>
+                                    <textarea id="${inputId}" name="${inputId}" rows="${q.rows}" required 
+                                              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-${appConfig.theme_color_class}-500 focus:border-${appConfig.theme_color_class}-500 text-gray-700 resize-none">${existingAnswer}</textarea>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            });
+
+            formContainer.innerHTML = html;
+        };
+        
+        /**
+         * @description สร้าง Card สรุปผลสำหรับ Dashboard
+         * @param {object} partData
+         * @param {object} userAnswers
+         * @param {number} index
+         */
+        const createSummaryCard = (partData, userAnswers, index) => {
+            let resultHtml = '';
+            let partTitleColor = `text-${appConfig.theme_color_class}-700`;
+            let borderClass = `border-l-4 border-${appConfig.theme_color_class}-600`;
+            const bgColor = backgroundColors[index % backgroundColors.length]; // สลับสีพื้นหลังให้ตรงกับหน้าทำใบงาน
+            
+            // Handle all text inputs
+            resultHtml = partData.questions.map(q => {
+                const inputId = `${partData.id}-${q.q_id}`;
+                const answer = userAnswers[inputId] || 'ไม่ได้ให้คำตอบ';
+                
+                return `
+                    <div class="py-3">
+                        <p class="font-medium text-gray-800 mb-1 ${q.text === 'ตอบ' ? 'hidden' : ''}">${q.text} </p>
+                        <!-- คำตอบ: ใช้ p ธรรมดา ไม่ต้องมี label "ตอบ" ซ้ำ -->
+                        <div class="text-gray-700 leading-relaxed text-base p-3 bg-gray-200 rounded-md whitespace-pre-wrap">${answer}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="p-4 rounded-lg shadow-md ${borderClass} ${bgColor}">
+                    <h4 class="text-xl font-bold ${partTitleColor} mb-2">${partData.title}</h4>
+                    <!-- คำอธิบายโจทย์ย่อย: ใช้ text-sm -->
+                    <p class="text-sm text-gray-600 mb-4">${partData.description}</p> 
+                    ${resultHtml}
+                </div>
+            `;
+        };
+
+        /**
+         * @description แสดงผลลัพธ์บนหน้า Dashboard
+         */
+        const renderDashboard = () => {
+            const studentInfo = loadData('studentInfo');
+            const totalScore = loadData('totalScore'); // จะเป็น "ส่งงานแล้ว"
+            const userAnswers = loadData('userAnswers');
+            
+            if (!studentInfo || !userAnswers) {
+                showMessage('ไม่พบข้อมูลนักเรียนหรือคำตอบ กรุณาทำใบงานใหม่');
+                navigateTo(1);
+                return;
+            }
+
+            // ตั้งค่า UI ตาม Theme
+            const scoreCard = document.getElementById('score-card');
+            const downloadBtn = document.getElementById('download-btn');
+            scoreCard.className = `md:col-span-1 p-4 rounded-lg shadow-xl text-white text-center flex flex-col justify-center items-center bg-${appConfig.theme_color_class}-600`;
+            downloadBtn.className = `flex-1 py-3 px-4 rounded-md text-white font-bold transition duration-150 shadow-md hover:shadow-lg flex items-center justify-center space-x-2 bg-${appConfig.theme_color_class}-600 hover:bg-${appConfig.theme_color_class}-700`;
+            document.getElementById('student-info-card').className = `md:col-span-2 p-4 rounded-lg shadow-md border-l-4 border-${appConfig.theme_color_class}-600 bg-white`;
+
+            // ข้อมูลนักเรียน
+            const selectedPerformance = userAnswers['p_select-q_name'] || 'ไม่ได้ระบุ';
+            document.getElementById('dashboard-title').textContent = `ใบสรุปผลงาน: วิเคราะห์ ${selectedPerformance}`;
+            document.getElementById('info-name').textContent = studentInfo.name;
+            document.getElementById('info-class').textContent = `ชั้น: ${studentInfo.class} / เลขที่: ${studentInfo.number}`;
+
+            // สรุปสถานะ
+            document.getElementById('total-score-display').textContent = 'เสร็จสมบูรณ์';
+            document.getElementById('total-points-display').textContent = 'ดาวน์โหลดไฟล์สรุปผล (PNG) เพื่อส่งงานใน Google Classroom';
+
+            // ส่วนรายละเอียดผลลัพธ์
+            const resultsDetails = document.getElementById('results-details');
+            let resultsHtml = '';
+            
+            worksheetStructure.forEach((part, index) => {
+                resultsHtml += createSummaryCard(part, userAnswers, index); 
+            });
+            
+            resultsDetails.innerHTML = resultsHtml;
+        };
+
+        // --- 5. Logic and Event Handlers ---
+
+        /**
+         * @description ตรวจสอบความสมบูรณ์และบันทึกสถานะการส่งงาน
+         */
+        const calculateScore = () => {
+            // บันทึกสถานะการส่งงาน
+            let totalScore = totalScorePlaceholder; 
+            userAnswers = {};
+            
+            // 1. เก็บคำตอบทั้งหมด
+            const formData = new FormData(document.getElementById('worksheet-form'));
+            formData.forEach((value, key) => {
+                userAnswers[key] = value;
+            });
+
+            saveData('userAnswers', userAnswers);
+            saveData('totalScore', totalScore); // บันทึกสถานะ
+
+            showCompletionModal(); // แสดง Pop-up ยืนยันการส่งงาน
+        };
+
+        /**
+         * @description ตรวจสอบความสมบูรณ์ของฟอร์มใบงาน
+         */
+        const validateAndScore = () => {
+            const form = document.getElementById('worksheet-form');
+            if (!form.checkValidity()) {
+                // แสดงข้อความแจ้งเตือนว่ายังกรอกไม่ครบ
+                showMessage('กรุณาตอบคำถามให้ครบทุกข้อก่อนดำเนินการต่อ');
+                form.reportValidity(); // ทริกเกอร์การแสดงผลลัพธ์การตรวจสอบมาตรฐานของบราวเซอร์
+                return;
+            }
+            calculateScore();
+        };
+
+        /**
+         * @description จัดการการดาวน์โหลดใบสรุปผลเป็นรูปภาพ
+         */
+        const downloadSummary = () => {
+            const captureArea = document.getElementById('dashboard-capture-area');
+            const originalWidth = captureArea.style.width;
+            const originalMaxWidth = captureArea.style.maxWidth;
+            const originalPadding = captureArea.style.padding;
+            
+            // กฎ: ขยายก่อนถ่าย (ready-for-capture: 1000px)
+            captureArea.style.width = '1000px';
+            captureArea.style.maxWidth = 'none';
+            captureArea.style.padding = '50px'; // เพิ่ม Padding เพื่อความสวยงาม
+
+            const studentInfo = loadData('studentInfo');
+            const currentAnswers = loadData('userAnswers'); 
+            
+            const filename = `Summary_${studentInfo.name.replace(/\s/g, '_')}_L${studentInfo.number}.png`;
+            const selectedPerformance = currentAnswers['p_select-q_name'] || 'ไม่ได้ระบุ';
+
+            // 1. ทำการ render canvas
+            html2canvas(captureArea, {
+                scale: 2, 
+                scrollY: -window.scrollY,
+                useCORS: true,
+                backgroundColor: '#f9fafb', 
+                allowTaint: true 
+            }).then(canvas => {
+                // 2. วาดลายน้ำ
+                const ctx = canvas.getContext('2d');
+                ctx.save();
+                
+                const watermarkText = `ใบสรุปผลงานวิเคราะห์ ${selectedPerformance} โดย ${studentInfo.name}`;
+                const fontSize = 40;
+                
+                // ใช้ฟอนต์สำรองที่มั่นใจว่าจะแสดงผลเสมอ
+                ctx.font = `italic ${fontSize}px Arial, sans-serif`; 
+                ctx.fillStyle = `rgba(0, 0, 0, 0.15)`; 
+                ctx.textAlign = 'center';
+                
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(-25 * Math.PI / 180);
+                ctx.fillText(watermarkText, 0, 0);
+
+                ctx.restore();
+
+                // 3. สั่งดาวน์โหลด
+                // ห่อการดาวน์โหลดด้วย setTimeout 0 เพื่อให้แน่ใจว่า Canvas ได้อัปเดตอย่างสมบูรณ์หลังจากการวาด
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = canvas.toDataURL('image/png');
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    // คืนค่า CSS เดิม
+                    captureArea.style.width = originalWidth;
+                    captureArea.style.maxWidth = originalMaxWidth;
+                    captureArea.style.padding = originalPadding;
+                }, 0); // แก้ปัญหาลายน้ำไม่แสดงผล
+            });
+        };
+
+        /**
+         * @description รีเซ็ตแอปพลิเคชันทั้งหมด
+         */
+        const resetApp = () => {
+            sessionStorage.clear();
+            userAnswers = {};
+            document.getElementById('worksheet-form').reset();
+            document.getElementById('student-form').reset();
+            // ต้อง Refresh เพื่อให้แน่ใจว่าทุกอย่างถูก Reset
+            window.location.reload(); 
+        };
+
+
+        // --- 6. Initialization ---
+
+        /**
+         * @description ตั้งค่าเริ่มต้นของแอปเมื่อโหลดหน้าเว็บ
+         */
+        const initApp = () => {
+            // ตั้งค่าข้อมูลไตเติ้ล
+            document.getElementById('app-title').textContent = appConfig.app_title;
+            document.getElementById('app-subtitle').textContent = appConfig.app_subtitle;
+
+            // ตั้งค่าปุ่มและสีตาม Theme
+            const buttons = document.querySelectorAll('#next-to-page-2-btn, #submit-worksheet-btn');
+            buttons.forEach(btn => {
+                btn.className = `w-full py-3 rounded-md text-white font-bold transition duration-150 shadow-md hover:shadow-lg ${getThemeClass('bg', 600)} hover:${getThemeClass('bg', 700)}`;
+            });
+            document.getElementById('next-to-page-2-btn').textContent = "ถัดไป (เริ่มทำใบงาน)";
+            document.getElementById('submit-worksheet-btn').textContent = "ส่งคำตอบและดูสรุปผล";
+
+            // โหลดข้อมูลนักเรียนที่บันทึกไว้
+            const studentInfo = loadData('studentInfo');
+            
+            if (studentInfo) {
+                // ถ้ามีข้อมูลนักเรียน ให้ข้ามไปหน้า 2 หรือ 3
+                userAnswers = loadData('userAnswers') || {};
+                
+                if (loadData('totalScore') !== null) {
+                    // ถ้าทำเสร็จแล้ว ให้ไปหน้า 3
+                    renderDashboard();
+                    navigateTo(3);
+                } else {
+                    // ถ้ายังทำไม่เสร็จ ให้ไปหน้า 2
+                    renderWorksheet();
+                    navigateTo(2);
+                }
+            } else {
+                // ถ้าไม่มีข้อมูล ให้เริ่มที่หน้า 1
+                navigateTo(1);
+            }
+
+            // Event Listener สำหรับ Page 1 (ข้อมูลนักเรียน)
+            document.getElementById('student-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const studentName = document.getElementById('student-name').value.trim();
+                const studentClass = document.getElementById('student-class').value.trim();
+                const studentNumber = document.getElementById('student-number').value.trim();
+
+                if (!studentName || !studentClass || !studentNumber) {
+                    showMessage('กรุณากรอกข้อมูลนักเรียนให้ครบถ้วน');
+                    return;
+                }
+
+                saveData('studentInfo', {
+                    name: studentName,
+                    class: studentClass,
+                    number: studentNumber
+                });
+                
+                // ไปหน้า 2
+                renderWorksheet();
+                navigateTo(2);
+            });
+        };
+
+        // เริ่มต้นการทำงานของ App เมื่อหน้าเว็บโหลดสมบูรณ์
+        window.onload = initApp;
+
+    </script>
+</body>
+</html>
